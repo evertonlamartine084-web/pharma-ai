@@ -81,24 +81,101 @@ export default function Similarity() {
           </Card>
 
           {results && (
-            <Card title={`Moleculas similares a "${results.query.name}" (${results.total_compared} comparadas)`}>
+            <div className="space-y-6">
+              {/* Molecula de referencia */}
+              <Card title="Molecula Original (Referencia)">
+                <div className="flex items-center gap-6">
+                  <div className="flex-shrink-0 w-48 h-36 bg-white rounded-lg border border-navy-600/50 flex items-center justify-center overflow-hidden">
+                    <img src={`${import.meta.env.VITE_API_URL || '/api'}/molecules/render-svg?smiles=${encodeURIComponent(results.query.smiles)}&width=180&height=130`} alt="Estrutura" className="max-w-full max-h-full" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-lg font-semibold text-white">{results.query.name}</h4>
+                    <p className="text-xs text-gray-500 mt-1 font-mono">{results.query.smiles}</p>
+                    {results.query.props && (
+                      <div className="flex flex-wrap gap-3 mt-3">
+                        {[
+                          ['MW', results.query.props.mw],
+                          ['LogP', results.query.props.logp],
+                          ['TPSA', results.query.props.tpsa],
+                          ['HBD', results.query.props.hbd],
+                          ['HBA', results.query.props.hba],
+                          ['GI', results.query.props.gi_absorption],
+                          ['BBB', results.query.props.bbb_permeant ? 'Sim' : 'Nao'],
+                          ['LogS', results.query.props.log_s],
+                          ['Lipinski', `${results.query.props.lipinski_violations} viol.`],
+                        ].map(([k, v]) => (
+                          <div key={k} className="bg-navy-700/50 px-2.5 py-1 rounded border border-navy-600/30">
+                            <span className="text-[10px] text-gray-500">{k}</span>
+                            <span className="text-xs text-white ml-1 font-mono">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-3">{results.total_compared} moleculas comparadas via Tanimoto (Morgan ECFP4, raio=2, 2048 bits)</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Resultados */}
+              <Card title={`Moleculas similares (${results.similar.length} resultados)`}>
               <div className="space-y-2">
                 {results.similar.map((s, i) => (
-                  <div key={s.id} className="flex items-center gap-4 p-3 bg-navy-700/30 rounded-lg border border-navy-600/20">
-                    <span className="text-gray-500 text-sm w-6">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium">{s.name}</p>
-                      <p className="text-xs text-gray-500 truncate" title={s.smiles}>{s.smiles}</p>
-                    </div>
-                    <div className="w-32">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-500">{s.classification}</span>
-                        <span className="text-white font-mono font-bold">{(s.similarity * 100).toFixed(1)}%</span>
+                  <div key={s.id} className="bg-navy-700/30 rounded-lg border border-navy-600/20 p-4">
+                    <div className="flex items-center gap-4">
+                      <span className="text-gray-500 text-sm w-6">{i + 1}</span>
+                      <div className="flex-shrink-0 w-16 h-12 bg-white rounded border border-navy-600/30 flex items-center justify-center overflow-hidden">
+                        <img src={`${import.meta.env.VITE_API_URL || '/api'}/molecules/render-svg?smiles=${encodeURIComponent(s.smiles)}&width=60&height=45`} alt="" className="max-w-full max-h-full" />
                       </div>
-                      <div className="h-1.5 bg-navy-700 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${simBar(s.similarity)}`} style={{ width: `${s.similarity * 100}%` }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium">{s.name}</p>
+                        <p className="text-xs text-gray-500 truncate" title={s.smiles}>{s.smiles}</p>
+                      </div>
+                      <div className="w-32">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-500">{s.classification}</span>
+                          <span className="text-white font-mono font-bold">{(s.similarity * 100).toFixed(1)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-navy-700 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${simBar(s.similarity)}`} style={{ width: `${s.similarity * 100}%` }} />
+                        </div>
                       </div>
                     </div>
+
+                    {/* Comparacao farmacinetica */}
+                    {s.changes && s.changes.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-navy-600/20">
+                        <div className="flex flex-wrap gap-2">
+                          {s.changes.map((c, ci) => (
+                            <div key={ci} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs border ${
+                              c.direction === 'up' ? 'bg-accent-green/10 text-accent-green border-accent-green/20' :
+                              c.direction === 'down' ? 'bg-red-400/10 text-red-400 border-red-400/20' :
+                              'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                            }`}>
+                              {c.direction === 'up' ? (
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                              ) : c.direction === 'down' ? (
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
+                              )}
+                              <span className="font-medium">{c.prop}:</span>
+                              <span className="opacity-80">{c.reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {s.props && (
+                          <div className="flex gap-4 mt-2 text-[10px] text-gray-500">
+                            <span>MW: {s.props.mw}</span>
+                            <span>LogP: {s.props.logp}</span>
+                            <span>TPSA: {s.props.tpsa}</span>
+                            <span>HBD: {s.props.hbd}</span>
+                            <span>HBA: {s.props.hba}</span>
+                            <span>GI: {s.props.gi_absorption}</span>
+                            <span>LogS: {s.props.log_s}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {results.similar.length === 0 && (
@@ -106,6 +183,7 @@ export default function Similarity() {
                 )}
               </div>
             </Card>
+            </div>
           )}
         </div>
       )}

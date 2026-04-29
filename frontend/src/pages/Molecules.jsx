@@ -96,7 +96,7 @@ export default function Molecules() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-gray-500 border-b border-navy-600/50">
-                  <th className="pb-2">Nome</th><th className="pb-2">SMILES</th><th className="pb-2">MW</th><th className="pb-2">LogP</th><th className="pb-2">Lipinski</th><th className="pb-2">Fonte</th><th className="pb-2">Status</th>
+                  <th className="pb-2">Nome</th><th className="pb-2">SMILES</th><th className="pb-2">MW</th><th className="pb-2">LogP</th><th className="pb-2">Lipinski</th><th className="pb-2">Fonte</th><th className="pb-2">Status</th><th className="pb-2"></th>
                 </tr></thead>
                 <tbody>
                   {molecules.map(m => (
@@ -108,6 +108,13 @@ export default function Molecules() {
                       <td className="py-2">{m.lipinski_pass === true ? <span className="text-accent-green">\u2714</span> : m.lipinski_pass === false ? <span className="text-red-400">\u2718</span> : '-'}</td>
                       <td className="py-2 text-xs text-gray-500">{m.source}</td>
                       <td className="py-2"><StatusBadge status={getStatus(m)} /></td>
+                      <td className="py-2">
+                        <button onClick={() => { setGenForm({ ...genForm, seed_smiles: m.smiles }); setTab('generate') }}
+                          className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20 hover:bg-accent-cyan/20 transition-colors" title="Gerar analogos desta molecula">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                          Gerar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

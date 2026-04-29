@@ -243,11 +243,30 @@ export default function Analysis() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3 text-sm">
                           <div className="p-4 rounded-lg bg-navy-700/50 border border-navy-600/30">
-                            <p className="text-gray-500 text-xs">Binding Affinity</p>
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-gray-500 text-xs">Binding Affinity</p>
+                              <span className={`text-[10px] px-2 py-0.5 rounded border ${results.docking.method?.includes('Vina') ? 'bg-accent-green/10 text-accent-green border-accent-green/20' : 'bg-navy-600/50 text-gray-400 border-navy-500/30'}`}>
+                                {results.docking.method || 'Simulacao'}
+                              </span>
+                            </div>
                             <p className="text-3xl font-bold text-accent-cyan">{results.docking.binding_affinity} <span className="text-sm font-normal text-gray-400">kcal/mol</span></p>
                             <StatusBadge status={results.docking.status} />
                             <p className="text-xs text-gray-500 mt-1">{results.docking.classification}</p>
                           </div>
+                          {results.docking.all_modes && (
+                            <div>
+                              <h4 className="font-medium text-gray-300 mb-2">Modos de Ligacao (Vina)</h4>
+                              <div className="space-y-1">
+                                {results.docking.all_modes.map((m, i) => (
+                                  <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded bg-navy-700/30">
+                                    <span className="text-gray-500">Modo {m.mode}</span>
+                                    <span className="font-mono text-white">{m.affinity} kcal/mol</span>
+                                    <span className="text-gray-600">RMSD: {m.rmsd_lb}/{m.rmsd_ub}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           <div>
                             <h4 className="font-medium text-gray-300 mb-2">Proteina Alvo</h4>
                             <p className="text-gray-400">{results.docking.protein}</p>

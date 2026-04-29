@@ -11,6 +11,7 @@ from app.schemas import DockingRequest
 from app.services.adme_service import evaluate_adme
 from app.services.swissadme_scraper import fetch_swissadme
 from app.services.docking_service import perform_docking, generate_ligand_sdf
+from app.services.vina_docking import run_vina_docking, is_vina_available
 from app.services.rdkit_service import validate_smiles
 
 router = APIRouter(prefix="/api/analysis", tags=["Analises"])
@@ -100,16 +101,36 @@ def run_docking(data: DockingRequest, user_id: str = "default", db: Session = De
     if not protein:
         raise HTTPException(status_code=404, detail="Proteina nao encontrada")
 
-    result = perform_docking(mol.smiles, protein.name, protein.pdb_data)
-    if not result["success"]:
-        raise HTTPException(status_code=400, detail=result["error"])
-
-    # Gerar SDF 3D do ligante posicionado no sitio ativo
+    # Tentar docking real com AutoDock Vina primeiro
+    result = None
     ligand_sdf = None
-    if result.get("active_sites"):
-        site = result["active_sites"][0]
-        center = site["center"]
-        ligand_sdf = generate_ligand_sdf(mol.smiles, center["x"], center["y"], center["z"])
+
+    if protein.pdb_data and is_vina_available():
+        vina_result = run_vina_docking(mol.smiles, protein.pdb_data, protein.name)
+        if vina_result["success"]:
+            result = vina_result
+            ligand_sdf = vina_result.get("docked_ligand_sdf")
+            # Adicionar campos compativeis com o formato anterior
+            result["active_sites"] = [{
+                "site_id": 1,
+                "center": result["center"],
+                "residues": [],
+            }]
+            result["interactions"] = []
+            result["ligand_properties"] = {
+                "smiles": mol.smiles,
+                "modes": len(result.get("all_modes", [])),
+            }
+
+    # Fallback: simulacao por propriedades
+    if result is None:
+        result = perform_docking(mol.smiles, protein.name, protein.pdb_data)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        if result.get("active_sites"):
+            site = result["active_sites"][0]
+            center = site["center"]
+            ligand_sdf = generate_ligand_sdf(mol.smiles, center["x"], center["y"], center["z"])
 
     analysis = Analysis(
         molecule_id=data.molecule_id,
