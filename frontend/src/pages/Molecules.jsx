@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { moleculeApi, proteinApi } from '../services/api'
 import Card from '../components/Card'
 import StatusBadge from '../components/StatusBadge'
 import { inputCls, btnCls, btnSecondary, tabCls } from '../styles'
 
 export default function Molecules() {
+  const [searchParams] = useSearchParams()
   const [molecules, setMolecules] = useState([])
   const [proteins, setProteins] = useState([])
-  const [tab, setTab] = useState('list')
+  const [tab, setTab] = useState(searchParams.get('tab') === 'generate' ? 'generate' : 'list')
   const [form, setForm] = useState({ name: '', smiles: '', target_protein_id: '' })
   const [genForm, setGenForm] = useState({ seed_smiles: '', n_molecules: 10, target_protein_id: '' })
   const [loading, setLoading] = useState(false)

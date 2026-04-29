@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { proteinApi, moleculeApi, analysisApi } from '../services/api'
 
 export default function Dashboard() {
@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [molecules, setMolecules] = useState([])
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => { loadStats() }, [])
 
@@ -53,12 +54,19 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-white">Bem-vindo(a) ao <span className="text-accent-cyan">PharmaAI</span></h1>
           <p className="text-gray-400 text-sm mt-1">Selecione uma proteina alvo e gere novas moleculas com apoio da inteligencia artificial.</p>
         </div>
-        {stats.proteins === 0 && stats.molecules === 0 && (
-          <button onClick={seedData} disabled={seeding}
-            className="bg-gradient-to-r from-accent-cyan to-accent-teal text-navy-950 px-5 py-2.5 rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity">
-            {seeding ? 'Populando...' : 'Inicializar Banco'}
+        <div className="flex gap-3">
+          {stats.proteins === 0 && stats.molecules === 0 && (
+            <button onClick={seedData} disabled={seeding}
+              className="bg-navy-700 text-gray-300 px-4 py-2.5 rounded-lg text-sm border border-navy-600/50 hover:bg-navy-600 disabled:opacity-50 transition-colors">
+              {seeding ? 'Populando...' : 'Inicializar Banco'}
+            </button>
+          )}
+          <button onClick={() => navigate('/molecules?tab=generate')}
+            className="bg-gradient-to-r from-accent-cyan to-accent-teal text-navy-950 px-5 py-2.5 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            Gerar Novas Estruturas
           </button>
-        )}
+        </div>
       </div>
 
       {/* Pipeline Steps */}
