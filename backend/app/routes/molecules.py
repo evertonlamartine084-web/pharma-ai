@@ -2,8 +2,8 @@ import csv
 import io
 import json
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
+from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -11,6 +11,7 @@ from app.models.molecule import Molecule
 from app.schemas import SMILESInput, SMILESBatchInput, GenerateMoleculesRequest, ExportRequest
 from app.services.rdkit_service import validate_smiles
 from app.services.molecule_generator import generate_molecules
+from app.services.swissadme_scraper import fetch_swissadme, fetch_swissadme_batch
 
 router = APIRouter(prefix="/api/molecules", tags=["Moleculas"])
 
@@ -22,6 +23,26 @@ SEED_MOLECULES = [
     {"name": "Sitamaquina", "smiles": "COc1cc(NC(C)CCCN(CC)CC)c2ncccc2c1"},
     {"name": "Pentamidina", "smiles": "NC(=N)c1ccc(OCCCCCOc2ccc(C(=N)N)cc2)cc1"},
 ]
+
+
+@router.get("/render-svg")
+def render_molecule_svg(smiles: str = Query(...), width: int = 400, height: int = 300):
+    """Renderiza a estrutura 2D da molecula como SVG."""
+    from rdkit import Chem
+    from rdkit.Chem import Draw, AllChem
+
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise HTTPException(status_code=400, detail="SMILES invalido")
+
+    AllChem.Compute2DCoords(mol)
+    drawer = Draw.MolDraw2DSVG(width, height)
+    drawer.drawOptions().addStereoAnnotation = True
+    drawer.DrawMolecule(mol)
+    drawer.FinishDrawing()
+    svg = drawer.GetDrawingText()
+
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @router.get("/")
@@ -127,12 +148,34 @@ async def upload_csv(
 def generate(data: GenerateMoleculesRequest, user_id: str = "default", db: Session = Depends(get_db)):
     generated = generate_molecules(data.seed_smiles, data.n_molecules)
 
+    if not generated:
+        return {"count": 0, "molecules": []}
+
+    # Buscar dados do SwissADME em batch (uma unica chamada para todas)
+    smiles_list = [gen["smiles"] for gen in generated]
+    swissadme_results = fetch_swissadme_batch(smiles_list)
+
     saved = []
     for i, gen in enumerate(generated):
-        validation = validate_smiles(gen["smiles"])
+        smiles = gen["smiles"]
+        validation = validate_smiles(smiles)
+
+        # Usar dados do SwissADME se disponivel
+        adme_data = swissadme_results[i] if i < len(swissadme_results) else None
+        if adme_data and adme_data.get("success"):
+            pc = adme_data.get("physicochemical", {})
+            lp = adme_data.get("lipophilicity", {})
+            validation["molecular_weight"] = pc.get("molecular_weight") or validation.get("molecular_weight")
+            validation["logp"] = lp.get("consensus_logp") or validation.get("logp")
+            validation["hba"] = pc.get("num_h_bond_acceptors") or validation.get("hba")
+            validation["hbd"] = pc.get("num_h_bond_donors") or validation.get("hbd")
+            validation["tpsa"] = pc.get("tpsa") or validation.get("tpsa")
+        else:
+            adme_data = None
+
         mol = Molecule(
             name=f"GEN-{i+1}-{gen['strategy']}",
-            smiles=gen["smiles"],
+            smiles=smiles,
             target_protein_id=data.target_protein_id,
             source="generated",
             is_valid=validation["valid"],
@@ -144,7 +187,7 @@ def generate(data: GenerateMoleculesRequest, user_id: str = "default", db: Sessi
             user_id=user_id,
         )
         db.add(mol)
-        saved.append({**gen, "validation": validation})
+        saved.append({**gen, "validation": validation, "swissadme": adme_data})
 
     db.commit()
     return {"count": len(saved), "molecules": saved}

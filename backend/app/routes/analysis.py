@@ -9,7 +9,8 @@ from app.models.protein import Protein
 from app.models.analysis import Analysis
 from app.schemas import DockingRequest
 from app.services.adme_service import evaluate_adme
-from app.services.docking_service import perform_docking
+from app.services.swissadme_scraper import fetch_swissadme
+from app.services.docking_service import perform_docking, generate_ligand_sdf
 from app.services.rdkit_service import validate_smiles
 
 router = APIRouter(prefix="/api/analysis", tags=["Analises"])
@@ -51,12 +52,27 @@ def run_validation(molecule_id: int, user_id: str = "default", db: Session = Dep
 
 
 @router.post("/adme/{molecule_id}")
-def run_adme(molecule_id: int, user_id: str = "default", db: Session = Depends(get_db)):
+def run_adme(
+    molecule_id: int,
+    user_id: str = "default",
+    source: str = "swissadme",
+    db: Session = Depends(get_db),
+):
+    """
+    Avaliacao ADME.
+    source: 'swissadme' (dados reais via scraping) ou 'local' (calculo RDKit)
+    """
     mol = db.query(Molecule).filter(Molecule.id == molecule_id).first()
     if not mol:
         raise HTTPException(status_code=404, detail="Molecula nao encontrada")
 
-    result = evaluate_adme(mol.smiles)
+    result = None
+    if source == "swissadme":
+        result = fetch_swissadme(mol.smiles)
+
+    if not result or not result.get("success"):
+        result = evaluate_adme(mol.smiles)
+
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
 
@@ -88,6 +104,13 @@ def run_docking(data: DockingRequest, user_id: str = "default", db: Session = De
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
 
+    # Gerar SDF 3D do ligante posicionado no sitio ativo
+    ligand_sdf = None
+    if result.get("active_sites"):
+        site = result["active_sites"][0]
+        center = site["center"]
+        ligand_sdf = generate_ligand_sdf(mol.smiles, center["x"], center["y"], center["z"])
+
     analysis = Analysis(
         molecule_id=data.molecule_id,
         protein_id=data.protein_id,
@@ -101,7 +124,17 @@ def run_docking(data: DockingRequest, user_id: str = "default", db: Session = De
     db.commit()
     db.refresh(analysis)
 
-    return {"analysis": analysis, "results": result}
+    return {
+        "analysis": analysis,
+        "results": result,
+        "viewer_data": {
+            "protein_pdb": protein.pdb_data,
+            "ligand_sdf": ligand_sdf,
+            "active_site_residues": [
+                r["number"] for r in result["active_sites"][0].get("residues", [])
+            ] if result.get("active_sites") else [],
+        },
+    }
 
 
 @router.post("/pipeline/{molecule_id}")
@@ -138,6 +171,7 @@ def run_full_pipeline(
 
     # 3. Docking (se proteina especificada)
     docking = None
+    viewer_data = None
     if protein_id:
         protein = db.query(Protein).filter(Protein.id == protein_id).first()
         if protein:
@@ -151,6 +185,19 @@ def run_full_pipeline(
                 status="completed",
                 user_id=user_id,
             ))
+            # Dados para visualizacao 3D
+            ligand_sdf = None
+            if docking.get("active_sites"):
+                site = docking["active_sites"][0]
+                center = site["center"]
+                ligand_sdf = generate_ligand_sdf(mol.smiles, center["x"], center["y"], center["z"])
+            viewer_data = {
+                "protein_pdb": protein.pdb_data,
+                "ligand_sdf": ligand_sdf,
+                "active_site_residues": [
+                    r["number"] for r in docking["active_sites"][0].get("residues", [])
+                ] if docking.get("active_sites") else [],
+            }
 
     db.commit()
 
@@ -159,4 +206,5 @@ def run_full_pipeline(
         "validation": validation,
         "adme": adme,
         "docking": docking,
+        "viewer_data": viewer_data,
     }

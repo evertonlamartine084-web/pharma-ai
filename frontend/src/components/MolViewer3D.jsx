@@ -1,33 +1,38 @@
 import { useEffect, useRef } from 'react'
+import { createViewer, SurfaceType } from '3dmol/build/3Dmol.es6.js'
 
 export default function MolViewer3D({ pdbData, height = 400 }) {
   const containerRef = useRef(null)
   const viewerRef = useRef(null)
 
   useEffect(() => {
-    if (!pdbData || !containerRef.current || !window.$3Dmol) return
+    if (!pdbData || !containerRef.current) return
 
-    if (viewerRef.current) {
-      viewerRef.current.clear()
+    const el = containerRef.current
+    el.innerHTML = ''
+
+    try {
+      const viewer = createViewer(el, {
+        backgroundColor: '#0f172a',
+        antialias: true,
+      })
+      viewerRef.current = viewer
+
+      viewer.addModel(pdbData, 'pdb')
+      viewer.setStyle({}, { cartoon: { color: 'spectrum' } })
+      viewer.addSurface(SurfaceType.VDW, {
+        opacity: 0.15,
+        color: '#6366f1',
+      })
+      viewer.zoomTo()
+      viewer.render()
+    } catch (e) {
+      console.error('Erro ao renderizar 3D:', e)
     }
-
-    const viewer = window.$3Dmol.createViewer(containerRef.current, {
-      backgroundColor: '#f8fafc',
-    })
-    viewerRef.current = viewer
-
-    viewer.addModel(pdbData, 'pdb')
-    viewer.setStyle({}, { cartoon: { color: 'spectrum' } })
-    viewer.addSurface(window.$3Dmol.SurfaceType.VDW, {
-      opacity: 0.15,
-      color: '#6366f1',
-    })
-    viewer.zoomTo()
-    viewer.render()
 
     return () => {
       if (viewerRef.current) {
-        viewerRef.current.clear()
+        try { viewerRef.current.clear() } catch (_) {}
         viewerRef.current = null
       }
     }
@@ -36,10 +41,10 @@ export default function MolViewer3D({ pdbData, height = 400 }) {
   if (!pdbData) {
     return (
       <div
-        className="flex items-center justify-center bg-gray-100 rounded-lg border-2 border-dashed border-gray-300"
+        className="flex items-center justify-center bg-navy-700/30 rounded-lg border-2 border-dashed border-navy-600/50"
         style={{ height }}
       >
-        <p className="text-gray-400">Nenhum dado PDB disponivel para visualizacao</p>
+        <p className="text-gray-600">Nenhum dado PDB disponivel para visualizacao</p>
       </div>
     )
   }
@@ -47,8 +52,8 @@ export default function MolViewer3D({ pdbData, height = 400 }) {
   return (
     <div
       ref={containerRef}
-      className="rounded-lg border border-gray-200 overflow-hidden"
-      style={{ height, position: 'relative' }}
+      className="rounded-lg border border-navy-600/50 overflow-hidden"
+      style={{ height, width: '100%', position: 'relative' }}
     />
   )
 }

@@ -16,7 +16,7 @@ import math
 import random
 
 from rdkit import Chem
-from rdkit.Chem import Descriptors, rdMolDescriptors
+from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
 
 
 def perform_docking(smiles: str, protein_name: str, pdb_data: str | None = None) -> dict:
@@ -212,3 +212,40 @@ def _predict_interactions(mol, rng: random.Random) -> list[dict]:
         })
 
     return interactions
+
+
+def generate_ligand_sdf(smiles: str, center_x: float, center_y: float, center_z: float) -> str | None:
+    """Gera SDF 3D do ligante posicionado no centro do sitio ativo."""
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+
+    mol = Chem.AddHs(mol)
+    params = AllChem.ETKDGv2() if hasattr(AllChem, 'ETKDGv2') else AllChem.ETKDG()
+    result = AllChem.EmbedMolecule(mol, params)
+    if result == -1:
+        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+    if result == -1:
+        return None
+
+    try:
+        AllChem.MMFFOptimizeMolecule(mol, maxIters=500)
+    except Exception:
+        pass
+
+    # Mover ligante para o centro do sitio ativo
+    conf = mol.GetConformer()
+    positions = conf.GetPositions()
+    centroid = positions.mean(axis=0)
+    translation = [center_x - centroid[0], center_y - centroid[1], center_z - centroid[2]]
+
+    for i in range(mol.GetNumAtoms()):
+        pos = conf.GetAtomPosition(i)
+        conf.SetAtomPosition(i, (
+            pos.x + translation[0],
+            pos.y + translation[1],
+            pos.z + translation[2],
+        ))
+
+    mol = Chem.RemoveHs(mol)
+    return Chem.MolToMolBlock(mol)

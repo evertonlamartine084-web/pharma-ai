@@ -36,10 +36,16 @@ export const analysisApi = {
   list: () => api.get('/analysis/'),
   get: (id) => api.get(`/analysis/${id}`),
   validate: (moleculeId) => api.post(`/analysis/validate/${moleculeId}`),
-  adme: (moleculeId) => api.post(`/analysis/adme/${moleculeId}`),
+  adme: (moleculeId, source = 'swissadme') => api.post(`/analysis/adme/${moleculeId}?source=${source}`),
   docking: (data) => api.post('/analysis/docking', data),
   pipeline: (moleculeId, proteinId) =>
     api.post(`/analysis/pipeline/${moleculeId}?protein_id=${proteinId}`),
+}
+
+export const similarityApi = {
+  pair: (smiles1, smiles2) => api.post('/similarity/pair', { smiles1, smiles2 }),
+  find: (moleculeId, topN = 10) => api.get(`/similarity/find/${moleculeId}?top_n=${topN}`),
+  matrix: (limit = 20) => api.get(`/similarity/matrix?limit=${limit}`),
 }
 
 export default api

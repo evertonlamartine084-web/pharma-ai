@@ -1,15 +1,28 @@
 version: "3.9"
 
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pharma_ai
+      POSTGRES_USER: pharma
+      POSTGRES_PASSWORD: pharma_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://pharma:pharma_secret@db:5432/pharma_ai
+      - JWT_SECRET_KEY=pharma-ai-production-secret-change-me
     volumes:
       - ./backend:/app
-      - db-data:/app/data
-    environment:
-      - DATABASE_URL=sqlite:///./data/pharma_ai.db
 
   frontend:
     build: ./frontend
@@ -17,6 +30,8 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
 
 volumes:
-  db-data:
+  pgdata:

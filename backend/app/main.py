@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
-from app.routes import proteins, molecules, analysis
+from app.routes import proteins, molecules, analysis, auth, similarity
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,9 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(proteins.router)
 app.include_router(molecules.router)
 app.include_router(analysis.router)
+app.include_router(similarity.router)
 
 
 @app.get("/api/health")
