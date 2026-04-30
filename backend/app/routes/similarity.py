@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.molecule import Molecule
+from app.models.analysis import Analysis
 from app.services.similarity_service import tanimoto_similarity, find_similar, similarity_matrix
 from app.services.rdkit_service import validate_smiles
 
@@ -47,9 +48,19 @@ def _get_pharma_props(smiles: str) -> dict:
     }
 
 
-def _compare_props(ref: dict, candidate: dict) -> list:
+def _compare_props(ref: dict, candidate: dict, ref_affinity=None, cand_affinity=None) -> list:
     """Compara propriedades e gera lista de melhorias/pioras."""
     changes = []
+
+    # Binding Affinity (mais negativo = melhor)
+    if ref_affinity is not None and cand_affinity is not None:
+        diff = cand_affinity - ref_affinity
+        if diff < -0.5:
+            changes.append({"prop": "Docking", "direction": "up", "detail": f'{cand_affinity:.1f} kcal/mol (ref: {ref_affinity:.1f})', "reason": f"Melhor afinidade de ligacao ({abs(diff):.1f} kcal/mol)"})
+        elif diff > 0.5:
+            changes.append({"prop": "Docking", "direction": "down", "detail": f'{cand_affinity:.1f} kcal/mol (ref: {ref_affinity:.1f})', "reason": f"Pior afinidade de ligacao (+{diff:.1f} kcal/mol)"})
+        else:
+            changes.append({"prop": "Docking", "direction": "neutral", "detail": f'{cand_affinity:.1f} kcal/mol (ref: {ref_affinity:.1f})', "reason": "Afinidade similar"})
 
     # MW: mais proximo de 350 e melhor
     if ref.get("mw") and candidate.get("mw"):
@@ -159,13 +170,43 @@ def find_similar_molecules(
     # Propriedades da molecula de referencia
     ref_props = _get_pharma_props(mol.smiles)
 
-    # Adicionar propriedades e comparacao a cada similar
+    # Buscar melhor docking da molecula de referencia
+    ref_docking = db.query(Analysis).filter(
+        Analysis.molecule_id == molecule_id,
+        Analysis.analysis_type == "docking",
+        Analysis.binding_affinity != None,
+    ).order_by(Analysis.binding_affinity).first()
+
+    ref_affinity = ref_docking.binding_affinity if ref_docking else None
+    ref_protein_id = ref_docking.protein_id if ref_docking else None
+
+    # Adicionar propriedades, docking e comparacao a cada similar
     for r in results:
         r["props"] = _get_pharma_props(r["smiles"])
-        r["changes"] = _compare_props(ref_props, r["props"])
+
+        # Buscar melhor docking desta molecula
+        cand_docking = db.query(Analysis).filter(
+            Analysis.molecule_id == r["id"],
+            Analysis.analysis_type == "docking",
+            Analysis.binding_affinity != None,
+        ).order_by(Analysis.binding_affinity).first()
+
+        r["docking"] = None
+        if cand_docking:
+            r["docking"] = {
+                "binding_affinity": cand_docking.binding_affinity,
+                "protein_id": cand_docking.protein_id,
+                "method": cand_docking.results.get("method", "") if cand_docking.results else "",
+            }
+
+        r["changes"] = _compare_props(ref_props, r["props"], ref_affinity,
+                                       cand_docking.binding_affinity if cand_docking else None)
 
     return {
-        "query": {"id": mol.id, "name": mol.name, "smiles": mol.smiles, "props": ref_props},
+        "query": {
+            "id": mol.id, "name": mol.name, "smiles": mol.smiles, "props": ref_props,
+            "docking": {"binding_affinity": ref_affinity, "protein_id": ref_protein_id} if ref_affinity else None,
+        },
         "similar": results,
         "total_compared": len(candidates),
     }

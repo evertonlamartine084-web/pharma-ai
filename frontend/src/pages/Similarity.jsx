@@ -103,6 +103,7 @@ export default function Similarity() {
                           ['BBB', results.query.props.bbb_permeant ? 'Sim' : 'Nao'],
                           ['LogS', results.query.props.log_s],
                           ['Lipinski', `${results.query.props.lipinski_violations} viol.`],
+                          ...(results.query.docking ? [['Docking', `${results.query.docking.binding_affinity?.toFixed(1)} kcal/mol`]] : []),
                         ].map(([k, v]) => (
                           <div key={k} className="bg-navy-700/50 px-2.5 py-1 rounded border border-navy-600/30">
                             <span className="text-[10px] text-gray-500">{k}</span>
@@ -163,8 +164,8 @@ export default function Similarity() {
                             </div>
                           ))}
                         </div>
-                        {s.props && (
-                          <div className="flex gap-4 mt-2 text-[10px] text-gray-500">
+                        <div className="flex gap-4 mt-2 text-[10px] text-gray-500">
+                          {s.props && <>
                             <span>MW: {s.props.mw}</span>
                             <span>LogP: {s.props.logp}</span>
                             <span>TPSA: {s.props.tpsa}</span>
@@ -172,8 +173,14 @@ export default function Similarity() {
                             <span>HBA: {s.props.hba}</span>
                             <span>GI: {s.props.gi_absorption}</span>
                             <span>LogS: {s.props.log_s}</span>
-                          </div>
-                        )}
+                          </>}
+                          {s.docking && (
+                            <span className={`font-medium ${s.docking.binding_affinity <= -8 ? 'text-accent-green' : s.docking.binding_affinity <= -6 ? 'text-accent-cyan' : 'text-yellow-400'}`}>
+                              Docking: {s.docking.binding_affinity?.toFixed(1)} kcal/mol
+                            </span>
+                          )}
+                          {!s.docking && <span className="text-gray-600 italic">Sem docking</span>}
+                        </div>
                       </div>
                     )}
                   </div>
