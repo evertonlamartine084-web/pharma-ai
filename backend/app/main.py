@@ -1,10 +1,32 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import engine, Base
+from app.database import engine, Base, SessionLocal
 from app.routes import proteins, molecules, analysis, auth, similarity, report, advisor
 
 Base.metadata.create_all(bind=engine)
+
+# Criar usuario demo automaticamente se nao existir (evita perda no Render free)
+def _seed_demo_user():
+    from app.models.user import User
+    from app.services.auth_service import hash_password
+    db = SessionLocal()
+    try:
+        if not db.query(User).filter(User.username == "demo").first():
+            db.add(User(
+                username="demo",
+                email="demo@pharmaai.app",
+                hashed_password=hash_password("demo123"),
+                full_name="Pesquisador",
+                institution="UFRN",
+            ))
+            db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+
+_seed_demo_user()
 
 app = FastAPI(
     title="PharmaAI - Descoberta de Farmacos para Doencas Negligenciadas",
