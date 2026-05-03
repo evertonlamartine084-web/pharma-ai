@@ -14,3 +14,9 @@ body {
 ::-webkit-scrollbar-track { background: #1C2541; }
 ::-webkit-scrollbar-thumb { background: #2d4a6f; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #22D3EE; }
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in { animation: slide-in 0.3s ease-out; }

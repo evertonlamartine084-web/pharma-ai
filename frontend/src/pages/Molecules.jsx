@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { moleculeApi, proteinApi } from '../services/api'
+import { moleculeApi, proteinApi, reportApi } from '../services/api'
 import Card from '../components/Card'
 import StatusBadge from '../components/StatusBadge'
+import { useToast } from '../components/Toast'
 import { inputCls, btnCls, btnSecondary, tabCls } from '../styles'
 
 export default function Molecules() {
   const [searchParams] = useSearchParams()
+  const toast = useToast()
   const [molecules, setMolecules] = useState([])
   const [proteins, setProteins] = useState([])
   const [tab, setTab] = useState(searchParams.get('tab') === 'generate' ? 'generate' : 'list')
@@ -48,8 +50,8 @@ export default function Molecules() {
     e.preventDefault(); setLoading(true); setGenResults(null)
     try {
       const data = { seed_smiles: genForm.seed_smiles, n_molecules: parseInt(genForm.n_molecules), target_protein_id: genForm.target_protein_id ? parseInt(genForm.target_protein_id) : null }
-      const res = await moleculeApi.generate(data); setGenResults(res.data); setMsg(`${res.data.count} moleculas geradas por IA + SwissADME`); loadData()
-    } catch (e) { setMsg('Erro: ' + (e.response?.data?.detail || e.message)) }
+      const res = await moleculeApi.generate(data); setGenResults(res.data); setMsg(`${res.data.count} moleculas geradas`); toast.success(`${res.data.count} moleculas geradas com sucesso!`); loadData()
+    } catch (e) { setMsg('Erro: ' + (e.response?.data?.detail || e.message)); toast.error('Falha ao gerar moleculas') }
     setLoading(false)
   }
 
@@ -109,11 +111,18 @@ export default function Molecules() {
                       <td className="py-2 text-xs text-gray-500">{m.source}</td>
                       <td className="py-2"><StatusBadge status={getStatus(m)} /></td>
                       <td className="py-2">
-                        <button onClick={() => { setGenForm({ ...genForm, seed_smiles: m.smiles }); setTab('generate') }}
-                          className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20 hover:bg-accent-cyan/20 transition-colors" title="Gerar analogos desta molecula">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                          Gerar
-                        </button>
+                        <div className="flex gap-1">
+                          <button onClick={() => { setGenForm({ ...genForm, seed_smiles: m.smiles }); setTab('generate') }}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-accent-cyan/10 text-accent-cyan border border-accent-cyan/20 hover:bg-accent-cyan/20 transition-colors" title="Gerar analogos">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                            Gerar
+                          </button>
+                          <a href={reportApi.moleculePdf(m.id)} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors" title="Baixar PDF">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            PDF
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   ))}

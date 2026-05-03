@@ -14,3 +14,4 @@ bcrypt==4.0.1
 psycopg2-binary==2.9.9
 scipy==1.13.1
 meeko==0.7.1
+reportlab==4.5.0

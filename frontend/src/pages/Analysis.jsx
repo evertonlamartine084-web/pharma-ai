@@ -4,6 +4,9 @@ import Card from '../components/Card'
 import StatusBadge from '../components/StatusBadge'
 import DockingViewer3D from '../components/DockingViewer3D'
 import MolStructure2D from '../components/MolStructure2D'
+import RadarChart, { calcRadarData } from '../components/RadarChart'
+import { useToast } from '../components/Toast'
+import AIAdvisor from '../components/AIAdvisor'
 import { inputCls, tabCls } from '../styles'
 
 export default function Analysis() {
@@ -17,6 +20,7 @@ export default function Analysis() {
   const [viewerData, setViewerData] = useState(null)
   const [tab, setTab] = useState('pipeline')
   const [admeSource, setAdmeSource] = useState('swissadme')
+  const toast = useToast()
 
   useEffect(() => { loadData() }, [])
 
@@ -29,17 +33,17 @@ export default function Analysis() {
 
   async function runPipeline() {
     if (!selectedMol) return; setLoading(true); setResults(null); setViewerData(null)
-    try { const res = await analysisApi.pipeline(parseInt(selectedMol), selectedProt ? parseInt(selectedProt) : null); setResults(res.data); if (res.data.viewer_data) setViewerData(res.data.viewer_data); loadData() } catch (e) { console.error(e) }
+    try { const res = await analysisApi.pipeline(parseInt(selectedMol), selectedProt ? parseInt(selectedProt) : null); setResults(res.data); if (res.data.viewer_data) setViewerData(res.data.viewer_data); loadData(); toast.success('Pipeline completo finalizado!') } catch (e) { console.error(e); toast.error('Erro no pipeline') }
     setLoading(false)
   }
   async function runAdme() {
     if (!selectedMol) return; setLoading(true)
-    try { const res = await analysisApi.adme(parseInt(selectedMol), admeSource); setResults({ adme: res.data.results }); loadData() } catch (e) { console.error(e) }
+    try { const res = await analysisApi.adme(parseInt(selectedMol), admeSource); setResults({ adme: res.data.results }); loadData(); toast.success(`ADME concluido (${res.data.results?.source || 'Local'})`) } catch (e) { console.error(e); toast.error('Erro na avaliacao ADME') }
     setLoading(false)
   }
   async function runDocking() {
     if (!selectedMol || !selectedProt) return; setLoading(true); setViewerData(null)
-    try { const res = await analysisApi.docking({ molecule_id: parseInt(selectedMol), protein_id: parseInt(selectedProt) }); setResults({ docking: res.data.results }); if (res.data.viewer_data) setViewerData(res.data.viewer_data); loadData() } catch (e) { console.error(e) }
+    try { const res = await analysisApi.docking({ molecule_id: parseInt(selectedMol), protein_id: parseInt(selectedProt) }); setResults({ docking: res.data.results }); if (res.data.viewer_data) setViewerData(res.data.viewer_data); loadData(); toast.success(`Docking concluido: ${res.data.results?.binding_affinity} kcal/mol`) } catch (e) { console.error(e); toast.error('Erro no docking') }
     setLoading(false)
   }
 
@@ -125,10 +129,13 @@ export default function Analysis() {
                 <Card title={<span>Avaliacao ADME <span className={`ml-2 text-xs px-2 py-0.5 rounded ${results.adme.source === 'SwissADME' ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-accent-cyan/15 text-accent-cyan border border-accent-cyan/20'}`}>{results.adme.source || 'Local (RDKit)'}</span></span>} className="lg:col-span-2">
                   {results.adme.success !== false ? (
                     <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="flex flex-col items-center">
-                          <MolStructure2D smiles={molecules.find(m => String(m.id) === selectedMol)?.smiles} width={300} height={250} />
-                          <p className="text-xs text-gray-600 mt-2 text-center max-w-[300px] truncate">{molecules.find(m => String(m.id) === selectedMol)?.smiles}</p>
+                          <MolStructure2D smiles={molecules.find(m => String(m.id) === selectedMol)?.smiles} width={250} height={200} />
+                          <p className="text-xs text-gray-600 mt-2 text-center max-w-[250px] truncate">{molecules.find(m => String(m.id) === selectedMol)?.smiles}</p>
+                          <div className="mt-3">
+                            <RadarChart data={calcRadarData(results.adme)} size={220} />
+                          </div>
                         </div>
                         <div className="text-sm">
                           <h4 className={sectionHead}>Physicochemical Properties</h4>
@@ -342,6 +349,10 @@ export default function Analysis() {
             </div>
           )}
         </Card>
+      )}
+      {/* Consultor IA flutuante */}
+      {selectedMol && (
+        <AIAdvisor moleculeId={parseInt(selectedMol)} moleculeName={molecules.find(m => String(m.id) === selectedMol)?.name} />
       )}
     </div>
   )

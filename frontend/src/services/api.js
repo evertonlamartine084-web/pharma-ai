@@ -42,6 +42,14 @@ export const analysisApi = {
     api.post(`/analysis/pipeline/${moleculeId}?protein_id=${proteinId}`),
 }
 
+export const reportApi = {
+  moleculePdf: (id) => `${API_URL}/report/molecule/${id}`,
+}
+
+export const advisorApi = {
+  analyze: (moleculeId, question = null) => api.post('/advisor/analyze', { molecule_id: moleculeId, question }),
+}
+
 export const similarityApi = {
   pair: (smiles1, smiles2) => api.post('/similarity/pair', { smiles1, smiles2 }),
   find: (moleculeId, topN = 10) => api.get(`/similarity/find/${moleculeId}?top_n=${topN}`),
