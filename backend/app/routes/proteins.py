@@ -67,6 +67,55 @@ def add_sequence(data: ProteinSequenceInput, user_id: str = "default", db: Sessi
     return protein
 
 
+@router.post("/fetch-pdb")
+def fetch_from_rcsb(pdb_id: str, name: str = "", user_id: str = "default", db: Session = Depends(get_db)):
+    """Busca estrutura molecular do RCSB Protein Data Bank por codigo PDB (ex: 3EDJ, 1A2B)."""
+    import requests as req
+
+    pdb_id = pdb_id.strip().upper()
+    if len(pdb_id) != 4:
+        raise HTTPException(status_code=400, detail="Codigo PDB deve ter 4 caracteres (ex: 3EDJ)")
+
+    # Buscar PDB do RCSB
+    pdb_url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
+    try:
+        resp = req.get(pdb_url, timeout=30)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"Estrutura {pdb_id} nao encontrada no RCSB PDB")
+    except req.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao acessar RCSB: {e}")
+
+    pdb_data = resp.text
+
+    # Extrair info do PDB
+    info = parse_pdb_content(pdb_data)
+    organism = ""
+    mol_type = "Proteina"
+    for line in pdb_data.split("\n"):
+        if line.startswith("SOURCE") and "ORGANISM_SCIENTIFIC" in line:
+            organism = line.split(":")[-1].strip().rstrip(";")
+        if line.startswith("HEADER"):
+            mol_type = line[10:50].strip()
+
+    protein = Protein(
+        name=name or f"{pdb_id} - {mol_type}",
+        organism=organism,
+        pdb_data=pdb_data,
+        source="rcsb_pdb",
+        user_id=user_id,
+    )
+    db.add(protein)
+    db.commit()
+    db.refresh(protein)
+
+    return {
+        "protein": protein,
+        "pdb_info": info,
+        "pdb_id": pdb_id,
+        "molecule_type": mol_type,
+    }
+
+
 @router.post("/alphafold")
 def fetch_alphafold(data: UniprotInput, user_id: str = "default", db: Session = Depends(get_db)):
     result = fetch_structure_by_uniprot(data.uniprot_id)

@@ -9,7 +9,7 @@ export default function Proteins() {
   const [selected, setSelected] = useState(null)
   const [pdbData, setPdbData] = useState(null)
   const [tab, setTab] = useState('list')
-  const [form, setForm] = useState({ name: '', organism: 'Leishmania', sequence: '', uniprot_id: '' })
+  const [form, setForm] = useState({ name: '', organism: 'Leishmania', sequence: '', uniprot_id: '', pdb_code: '' })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -49,14 +49,21 @@ export default function Proteins() {
     setLoading(false)
   }
 
+  async function fetchPdbCode(e) {
+    e.preventDefault(); setLoading(true)
+    try { await proteinApi.fetchPdb(form.pdb_code, form.name); setMsg(`Estrutura ${form.pdb_code.toUpperCase()} obtida do RCSB PDB`); setTab('list'); loadProteins() }
+    catch (e) { setMsg('Erro: ' + (e.response?.data?.detail || e.message)) }
+    setLoading(false)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">Alvo Proteico</h1>
+        <h1 className="text-2xl font-bold text-white">Alvo Molecular</h1>
         <div className="flex gap-2">
-          {['list', 'upload', 'alphafold'].map(t => (
+          {['list', 'upload', 'pdbfetch', 'alphafold'].map(t => (
             <button key={t} onClick={() => { setTab(t); setMsg('') }} className={tabCls(tab === t)}>
-              {{ list: 'Lista', upload: 'Upload PDB', alphafold: 'AlphaFold' }[t]}
+              {{ list: 'Lista', upload: 'Upload PDB', pdbfetch: 'Buscar PDB', alphafold: 'AlphaFold' }[t]}
             </button>
           ))}
         </div>
@@ -112,6 +119,20 @@ export default function Proteins() {
             <div><label className="block text-sm text-gray-400 mb-1">Organismo</label><input className={inputCls} value={form.organism} onChange={e => setForm({ ...form, organism: e.target.value })} /></div>
             <div><label className="block text-sm text-gray-400 mb-1">Sequencia</label><textarea className={inputCls} rows={6} placeholder="MAQYDKLVIGAGAR..." value={form.sequence} onChange={e => setForm({ ...form, sequence: e.target.value })} required /></div>
             <button type="submit" disabled={loading} className={btnCls}>{loading ? 'Salvando...' : 'Adicionar'}</button>
+          </form>
+        </Card>
+      )}
+
+      {tab === 'pdbfetch' && (
+        <Card title="Buscar Estrutura no RCSB Protein Data Bank">
+          <form onSubmit={fetchPdbCode} className="space-y-4 max-w-lg">
+            <div><label className="block text-sm text-gray-400 mb-1">Codigo PDB</label>
+              <input className={inputCls} placeholder="Ex: 3EDJ, 1A2B, 6LU7" value={form.pdb_code} onChange={e => setForm({ ...form, pdb_code: e.target.value })} required maxLength={4} />
+              <p className="text-xs text-gray-600 mt-1">Codigo de 4 caracteres do RCSB PDB (proteinas, acidos nucleicos, complexos)</p>
+            </div>
+            <div><label className="block text-sm text-gray-400 mb-1">Nome (opcional)</label><input className={inputCls} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+            <button type="submit" disabled={loading} className={btnCls}>{loading ? 'Buscando...' : 'Buscar no RCSB PDB'}</button>
+            <p className="text-xs text-gray-600">Busca estrutura experimental (raio-X, cryo-EM) do Protein Data Bank (rcsb.org).</p>
           </form>
         </Card>
       )}

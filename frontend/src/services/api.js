@@ -14,6 +14,7 @@ export const proteinApi = {
   },
   addSequence: (data) => api.post('/proteins/sequence', data),
   fetchAlphafold: (data) => api.post('/proteins/alphafold', data),
+  fetchPdb: (pdbId, name) => api.post(`/proteins/fetch-pdb?pdb_id=${encodeURIComponent(pdbId)}&name=${encodeURIComponent(name || '')}`),
   seedLeishmania: () => api.post('/proteins/seed-leishmania'),
 }
 
