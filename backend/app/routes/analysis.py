@@ -10,7 +10,7 @@ from app.models.analysis import Analysis
 from app.schemas import DockingRequest
 from app.services.adme_service import evaluate_adme
 from app.services.swissadme_scraper import fetch_swissadme
-from app.services.docking_service import perform_docking, generate_ligand_sdf
+from app.services.docking_service import perform_docking, generate_ligand_sdf, calc_3d_interactions
 from app.services.vina_docking import run_vina_docking, is_vina_available
 from app.services.rdkit_service import validate_smiles
 
@@ -145,6 +145,9 @@ def run_docking(data: DockingRequest, user_id: str = "default", db: Session = De
     db.commit()
     db.refresh(analysis)
 
+    # Calcular interacoes 3D com distancias
+    contacts_3d = calc_3d_interactions(protein.pdb_data, ligand_sdf) if ligand_sdf else []
+
     return {
         "analysis": analysis,
         "results": result,
@@ -154,6 +157,7 @@ def run_docking(data: DockingRequest, user_id: str = "default", db: Session = De
             "active_site_residues": [
                 r["number"] for r in result["active_sites"][0].get("residues", [])
             ] if result.get("active_sites") else [],
+            "contacts_3d": contacts_3d,
         },
     }
 

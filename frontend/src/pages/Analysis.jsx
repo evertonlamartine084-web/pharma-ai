@@ -244,7 +244,7 @@ export default function Analysis() {
                       {viewerData && (
                         <div>
                           <h4 className="font-medium text-gray-300 mb-3">Visualizacao 3D - Proteina + Ligante no Sitio Ativo</h4>
-                          <DockingViewer3D proteinPdb={viewerData.protein_pdb} ligandSdf={viewerData.ligand_sdf} activeSiteResidues={viewerData.active_site_residues} height={500} />
+                          <DockingViewer3D proteinPdb={viewerData.protein_pdb} ligandSdf={viewerData.ligand_sdf} activeSiteResidues={viewerData.active_site_residues} contacts3d={viewerData.contacts_3d || []} height={500} />
                         </div>
                       )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

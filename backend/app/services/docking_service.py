@@ -125,8 +125,13 @@ def _identify_active_sites(pdb_data: str | None, rng: random.Random) -> list[dic
         residues_near_center = []
         coords = []
 
+        # Aceitar ATOM (proteina) e HETATM (molecula pequena)
         for line in pdb_data.split("\n"):
-            if line.startswith("ATOM") and line[12:16].strip() == "CA":
+            is_protein_ca = line.startswith("ATOM") and line[12:16].strip() == "CA"
+            is_hetatm = line.startswith("HETATM")
+            if not (is_protein_ca or is_hetatm):
+                continue
+            if True:
                 try:
                     x = float(line[30:38])
                     y = float(line[38:46])
@@ -212,6 +217,92 @@ def _predict_interactions(mol, rng: random.Random) -> list[dict]:
         })
 
     return interactions
+
+
+def calc_3d_interactions(pdb_data: str, ligand_sdf: str) -> list[dict]:
+    """Calcula interacoes 3D entre alvo (PDB) e ligante (SDF) com distancias."""
+    if not pdb_data or not ligand_sdf:
+        return []
+
+    # Extrair coordenadas do alvo (PDB)
+    target_atoms = []
+    for line in pdb_data.split("\n"):
+        if line.startswith("ATOM") or line.startswith("HETATM"):
+            try:
+                x = float(line[30:38])
+                y = float(line[38:46])
+                z = float(line[46:54])
+                element = line[76:78].strip() if len(line) > 76 else line[12:16].strip()[0]
+                atom_name = line[12:16].strip()
+                target_atoms.append({"x": x, "y": y, "z": z, "element": element, "name": atom_name})
+            except (ValueError, IndexError):
+                continue
+
+    # Extrair coordenadas do ligante (SDF/MOL)
+    ligand_atoms = []
+    mol = Chem.MolFromMolBlock(ligand_sdf, sanitize=False)
+    if mol and mol.GetNumConformers() > 0:
+        conf = mol.GetConformer()
+        for i in range(mol.GetNumAtoms()):
+            pos = conf.GetAtomPosition(i)
+            atom = mol.GetAtomWithIdx(i)
+            ligand_atoms.append({
+                "x": pos.x, "y": pos.y, "z": pos.z,
+                "element": atom.GetSymbol(),
+                "idx": i,
+            })
+
+    if not target_atoms or not ligand_atoms:
+        return []
+
+    # Calcular contatos proximos (< 4A)
+    contacts = []
+    hbond_donors = {"N", "O"}
+    hbond_acceptors = {"N", "O", "F"}
+
+    for ta in target_atoms:
+        for la in ligand_atoms:
+            dx = ta["x"] - la["x"]
+            dy = ta["y"] - la["y"]
+            dz = ta["z"] - la["z"]
+            dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+            if dist > 4.0 or dist < 0.5:
+                continue
+
+            # Classificar tipo de interacao
+            itype = "Van der Waals"
+            if dist <= 3.5 and (ta["element"] in hbond_donors and la["element"] in hbond_acceptors):
+                itype = "Ligacao de hidrogenio"
+            elif dist <= 3.5 and (ta["element"] in hbond_acceptors and la["element"] in hbond_donors):
+                itype = "Ligacao de hidrogenio"
+            elif dist <= 4.0 and ta["element"] == "C" and la["element"] == "C":
+                itype = "Interacao hidrofobica"
+
+            contacts.append({
+                "type": itype,
+                "distance": round(dist, 2),
+                "target_atom": ta["name"],
+                "ligand_atom_idx": la["idx"],
+                "target_pos": {"x": round(ta["x"], 2), "y": round(ta["y"], 2), "z": round(ta["z"], 2)},
+                "ligand_pos": {"x": round(la["x"], 2), "y": round(la["y"], 2), "z": round(la["z"], 2)},
+            })
+
+    # Ordenar por distancia e pegar os mais relevantes
+    contacts.sort(key=lambda c: c["distance"])
+
+    # Filtrar: maximo 1 por par tipo+distancia similar
+    filtered = []
+    seen = set()
+    for c in contacts:
+        key = f"{c['type']}_{c['target_atom']}_{c['ligand_atom_idx']}"
+        if key not in seen:
+            seen.add(key)
+            filtered.append(c)
+        if len(filtered) >= 15:
+            break
+
+    return filtered
 
 
 def generate_ligand_sdf(smiles: str, center_x: float, center_y: float, center_z: float) -> str | None:

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createViewer, SurfaceType } from '3dmol/build/3Dmol.es6.js'
 
-export default function DockingViewer3D({ proteinPdb, ligandSdf, activeSiteResidues = [], height = 500 }) {
+export default function DockingViewer3D({ proteinPdb, ligandSdf, activeSiteResidues = [], contacts3d = [], height = 500 }) {
   const containerRef = useRef(null)
   const viewerRef = useRef(null)
   const [error, setError] = useState(null)
@@ -69,6 +69,38 @@ export default function DockingViewer3D({ proteinPdb, ligandSdf, activeSiteResid
         )
       }
 
+      // Desenhar linhas de interacao com distancias
+      if (contacts3d && contacts3d.length > 0) {
+        contacts3d.forEach(contact => {
+          const color = contact.type === 'Ligacao de hidrogenio' ? '#f472b6' :
+                        contact.type === 'Interacao hidrofobica' ? '#fbbf24' : '#94a3b8'
+
+          // Linha tracejada entre alvo e ligante
+          viewer.addLine({
+            start: contact.target_pos,
+            end: contact.ligand_pos,
+            color: color,
+            dashed: true,
+            dashLength: 0.15,
+            gapLength: 0.1,
+          })
+
+          // Label com distancia
+          const midX = (contact.target_pos.x + contact.ligand_pos.x) / 2
+          const midY = (contact.target_pos.y + contact.ligand_pos.y) / 2
+          const midZ = (contact.target_pos.z + contact.ligand_pos.z) / 2
+
+          viewer.addLabel(`${contact.distance}\u00C5`, {
+            position: { x: midX, y: midY, z: midZ },
+            backgroundColor: color,
+            backgroundOpacity: 0.7,
+            fontColor: '#ffffff',
+            fontSize: 10,
+            showBackground: true,
+          })
+        })
+      }
+
       viewer.zoomTo()
 
       if (proteinPdb && activeSiteResidues.length > 0) {
@@ -89,7 +121,7 @@ export default function DockingViewer3D({ proteinPdb, ligandSdf, activeSiteResid
         viewerRef.current = null
       }
     }
-  }, [proteinPdb, ligandSdf, JSON.stringify(activeSiteResidues)])
+  }, [proteinPdb, ligandSdf, JSON.stringify(activeSiteResidues), JSON.stringify(contacts3d)])
 
   const hasData = proteinPdb || ligandSdf
 
