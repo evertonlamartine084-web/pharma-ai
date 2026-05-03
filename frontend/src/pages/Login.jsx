@@ -90,7 +90,6 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-center text-gray-600 text-xs mt-6">UFRN - Pesquisa em Doencas Negligenciadas</p>
       </div>
     </div>
   )

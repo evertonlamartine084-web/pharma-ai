@@ -54,9 +54,9 @@ export default function Proteins() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Alvo Proteico</h1>
         <div className="flex gap-2">
-          {['list', 'upload', 'sequence', 'alphafold'].map(t => (
+          {['list', 'upload', 'alphafold'].map(t => (
             <button key={t} onClick={() => { setTab(t); setMsg('') }} className={tabCls(tab === t)}>
-              {{ list: 'Lista', upload: 'Upload PDB', sequence: 'Sequencia', alphafold: 'AlphaFold' }[t]}
+              {{ list: 'Lista', upload: 'Upload PDB', alphafold: 'AlphaFold' }[t]}
             </button>
           ))}
         </div>

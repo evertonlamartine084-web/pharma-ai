@@ -32,7 +32,14 @@ export default function Dashboard() {
   async function seedData() {
     setSeeding(true)
     try {
-      await Promise.all([proteinApi.seedLeishmania(), moleculeApi.seed()])
+      await proteinApi.seedLeishmania()
+      // Buscar estruturas AlphaFold automaticamente
+      try {
+        await proteinApi.fetchAlphafold({ uniprot_id: 'Q01782', name: 'PTR1 - Leishmania major (AlphaFold)' })
+      } catch (_) {}
+      try {
+        await proteinApi.fetchAlphafold({ uniprot_id: 'A4I898', name: 'TryR - Leishmania infantum (AlphaFold)' })
+      } catch (_) {}
       await loadStats()
     } catch (e) { console.error(e) }
     setSeeding(false)
@@ -55,10 +62,10 @@ export default function Dashboard() {
           <p className="text-gray-400 text-sm mt-1">Selecione uma proteina alvo e gere novas moleculas com apoio da inteligencia artificial.</p>
         </div>
         <div className="flex gap-3">
-          {stats.proteins === 0 && stats.molecules === 0 && (
+          {stats.proteins === 0 && (
             <button onClick={seedData} disabled={seeding}
               className="bg-navy-700 text-gray-300 px-4 py-2.5 rounded-lg text-sm border border-navy-600/50 hover:bg-navy-600 disabled:opacity-50 transition-colors">
-              {seeding ? 'Populando...' : 'Inicializar Banco'}
+              {seeding ? 'Carregando proteinas...' : 'Inicializar Proteinas'}
             </button>
           )}
           <button onClick={() => navigate('/molecules?tab=generate')}
@@ -71,12 +78,11 @@ export default function Dashboard() {
 
       {/* Pipeline Steps */}
       <div className="bg-navy-800 rounded-xl border border-navy-600/50 p-5">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {[
             { step: 1, title: 'Selecionar Alvo', desc: 'Escolha ou carregue sua proteina alvo', icon: <svg className="w-6 h-6 text-accent-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>, path: '/proteins' },
             { step: 2, title: 'Gerar Moleculas', desc: 'IA gera novas estruturas quimicas', icon: <svg className="w-6 h-6 text-accent-green" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714a2.25 2.25 0 00.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-1.5 4.5H6.5L5 14.5m14 0H5" /></svg>, path: '/molecules' },
             { step: 3, title: 'Avaliar', desc: 'ADMET, interacao e viabilidade', icon: <svg className="w-6 h-6 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>, path: '/analysis' },
-            { step: 4, title: 'Explorar Resultados', desc: 'Analise e selecione os melhores candidatos', icon: <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 11h-.5A3.375 3.375 0 009 14.25v4.5m3.75-9V3.75m0 0h3.375a1.125 1.125 0 010 2.25H12.75m0-2.25H9.375a1.125 1.125 0 000 2.25H12.75" /></svg>, path: '/analysis' },
           ].map(s => (
             <Link key={s.step} to={s.path} className="relative bg-navy-700/50 rounded-xl p-4 border border-navy-600/30 hover:border-accent-cyan/30 transition-colors group">
               <div className="flex items-start gap-3">
