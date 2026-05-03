@@ -245,13 +245,32 @@ export default function Analysis() {
                         <div>
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-medium text-gray-300">Visualizacao 3D - Alvo + Ligante</h4>
-                            <div className="flex gap-3 text-xs">
-                              <span className="text-accent-cyan">Alvo: <span className="text-white font-medium">{proteins.find(p => String(p.id) === selectedProt)?.name || '-'}</span></span>
-                              <span className="text-accent-green">Ligante: <span className="text-white font-medium">{molecules.find(m => String(m.id) === selectedMol)?.name || '-'}</span></span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-4">
+                            {/* Viewer 3D */}
+                            <div className="col-span-3">
+                              <DockingViewer3D proteinPdb={viewerData.protein_pdb} ligandSdf={viewerData.ligand_sdf} activeSiteResidues={viewerData.active_site_residues} contacts3d={viewerData.contacts_3d || []} height={500} />
+                            </div>
+                            {/* Estruturas 2D */}
+                            <div className="space-y-4">
+                              <div className="bg-navy-700/30 rounded-lg border border-accent-cyan/20 p-3">
+                                <p className="text-xs text-accent-cyan font-semibold mb-2">Alvo: {proteins.find(p => String(p.id) === selectedProt)?.name || '-'}</p>
+                                <MolStructure2D smiles={proteins.find(p => String(p.id) === selectedProt)?.smiles_source} width={200} height={150} />
+                                {!proteins.find(p => String(p.id) === selectedProt)?.smiles_source && (
+                                  <div className="w-full h-24 flex items-center justify-center">
+                                    <p className="text-[10px] text-gray-600">Proteina (sem SMILES 2D)</p>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="bg-navy-700/30 rounded-lg border border-accent-green/20 p-3">
+                                <p className="text-xs text-accent-green font-semibold mb-2">Ligante: {molecules.find(m => String(m.id) === selectedMol)?.name || '-'}</p>
+                                <MolStructure2D smiles={molecules.find(m => String(m.id) === selectedMol)?.smiles} width={200} height={150} />
+                                <p className="text-[9px] text-gray-600 mt-1 font-mono truncate" title={molecules.find(m => String(m.id) === selectedMol)?.smiles}>
+                                  {molecules.find(m => String(m.id) === selectedMol)?.smiles}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                          <DockingViewer3D proteinPdb={viewerData.protein_pdb} ligandSdf={viewerData.ligand_sdf} activeSiteResidues={viewerData.active_site_residues} contacts3d={viewerData.contacts_3d || []} height={500} />
-                          <p className="text-[10px] text-gray-600 mt-1 font-mono">Ligante SMILES: {molecules.find(m => String(m.id) === selectedMol)?.smiles}</p>
                         </div>
                       )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

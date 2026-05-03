@@ -74,10 +74,12 @@ def add_smiles_target(data: SMILESInput, user_id: str = "default", db: Session =
     # Converter para PDB
     pdb_data = Chem.MolToPDBBlock(mol)
 
+    canonical = Chem.MolToSmiles(Chem.RemoveHs(mol))
     protein = Protein(
-        name=data.name or f"Alvo-{Chem.MolToSmiles(Chem.RemoveHs(mol))[:30]}",
+        name=data.name or f"Alvo-{canonical[:30]}",
         organism="",
         pdb_data=pdb_data,
+        smiles_source=canonical,
         source="smiles",
         user_id=user_id,
     )
