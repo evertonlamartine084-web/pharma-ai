@@ -23,23 +23,38 @@ export default function DockingViewer3D({ proteinPdb, ligandSdf, activeSiteResid
       if (proteinPdb) {
         viewer.addModel(proteinPdb, 'pdb')
 
-        viewer.setStyle({ model: 0 }, {
-          cartoon: { color: '#64748b', opacity: 0.6 }
-        })
+        // Detectar se e proteina (ATOM) ou molecula pequena (HETATM)
+        const isProtein = proteinPdb.includes('\nATOM  ')
 
-        if (activeSiteResidues.length > 0) {
-          viewer.setStyle(
-            { model: 0, resi: activeSiteResidues },
-            {
-              cartoon: { color: '#f59e0b' },
-              stick: { color: '#f59e0b', radius: 0.15 },
-            }
-          )
+        if (isProtein) {
+          viewer.setStyle({ model: 0 }, {
+            cartoon: { color: '#64748b', opacity: 0.6 }
+          })
 
+          if (activeSiteResidues.length > 0) {
+            viewer.setStyle(
+              { model: 0, resi: activeSiteResidues },
+              {
+                cartoon: { color: '#f59e0b' },
+                stick: { color: '#f59e0b', radius: 0.15 },
+              }
+            )
+
+            viewer.addSurface(SurfaceType.VDW, {
+              opacity: 0.15,
+              color: '#fbbf24',
+            }, { model: 0, resi: activeSiteResidues })
+          }
+        } else {
+          // Molecula pequena como alvo: mostrar como stick + surface
+          viewer.setStyle({ model: 0 }, {
+            stick: { radius: 0.2, colorscheme: 'cyanCarbon' },
+            sphere: { scale: 0.25, colorscheme: 'cyanCarbon', opacity: 0.5 },
+          })
           viewer.addSurface(SurfaceType.VDW, {
-            opacity: 0.15,
-            color: '#fbbf24',
-          }, { model: 0, resi: activeSiteResidues })
+            opacity: 0.12,
+            color: '#22D3EE',
+          }, { model: 0 })
         }
       }
 

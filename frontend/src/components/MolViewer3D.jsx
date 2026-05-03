@@ -19,11 +19,18 @@ export default function MolViewer3D({ pdbData, height = 400 }) {
       viewerRef.current = viewer
 
       viewer.addModel(pdbData, 'pdb')
-      viewer.setStyle({}, { cartoon: { color: 'spectrum' } })
-      viewer.addSurface(SurfaceType.VDW, {
-        opacity: 0.15,
-        color: '#6366f1',
-      })
+
+      const isProtein = pdbData.includes('\nATOM  ')
+      if (isProtein) {
+        viewer.setStyle({}, { cartoon: { color: 'spectrum' } })
+        viewer.addSurface(SurfaceType.VDW, { opacity: 0.15, color: '#6366f1' })
+      } else {
+        viewer.setStyle({}, {
+          stick: { radius: 0.2, colorscheme: 'cyanCarbon' },
+          sphere: { scale: 0.3, colorscheme: 'cyanCarbon' },
+        })
+        viewer.addSurface(SurfaceType.VDW, { opacity: 0.15, color: '#22D3EE' })
+      }
       viewer.zoomTo()
       viewer.render()
     } catch (e) {
