@@ -251,8 +251,22 @@ export default function Analysis() {
                             <div className="col-span-3">
                               <DockingViewer3D proteinPdb={viewerData.protein_pdb} ligandSdf={viewerData.ligand_sdf} activeSiteResidues={viewerData.active_site_residues} contacts3d={viewerData.contacts_3d || []} height={500} />
                             </div>
-                            {/* Estruturas 2D */}
+                            {/* Estruturas 2D + Info */}
                             <div className="space-y-4">
+                              {/* Aviso sobre metodo */}
+                              {results.docking && (
+                                <div className={`p-2.5 rounded-lg border text-xs ${
+                                  results.docking.method?.includes('Vina')
+                                    ? 'bg-accent-green/10 border-accent-green/20 text-accent-green'
+                                    : 'bg-yellow-400/10 border-yellow-400/20 text-yellow-400'
+                                }`}>
+                                  <p className="font-semibold">{results.docking.method?.includes('Vina') ? 'Docking Real (Vina)' : 'Posicao Estimada'}</p>
+                                  <p className="opacity-70 mt-0.5">{results.docking.method?.includes('Vina')
+                                    ? 'Pose calculada pelo AutoDock Vina'
+                                    : 'Ligante posicionado no centro do alvo. Para pose real, instale o AutoDock Vina.'
+                                  }</p>
+                                </div>
+                              )}
                               <div className="bg-navy-700/30 rounded-lg border border-accent-cyan/20 p-3">
                                 <p className="text-xs text-accent-cyan font-semibold mb-2">Alvo: {proteins.find(p => String(p.id) === selectedProt)?.name || '-'}</p>
                                 <MolStructure2D smiles={proteins.find(p => String(p.id) === selectedProt)?.smiles_source} width={200} height={150} />
