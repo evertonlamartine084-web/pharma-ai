@@ -67,6 +67,49 @@ export default function DockingViewer3D({ proteinPdb, ligandSdf, activeSiteResid
             sphere: { scale: 0.3, colorscheme: 'greenCarbon' },
           }
         )
+
+        // Labels com simbolo do elemento em cada atomo do ligante
+        const ligandModel = viewer.getModel()
+        if (ligandModel) {
+          const atoms = ligandModel.selectedAtoms({})
+          atoms.forEach(atom => {
+            if (atom.elem && atom.elem !== 'H') {
+              const elemColors = { C: '#a3e635', O: '#ef4444', N: '#3b82f6', S: '#eab308', F: '#22d3ee', Cl: '#22d3ee', Br: '#a855f7', P: '#f97316' }
+              viewer.addLabel(atom.elem, {
+                position: { x: atom.x, y: atom.y, z: atom.z },
+                backgroundColor: elemColors[atom.elem] || '#a3e635',
+                backgroundOpacity: 0.8,
+                fontColor: '#0B132B',
+                fontSize: 9,
+                fontOpacity: 1,
+                showBackground: true,
+                alignment: 'center',
+              })
+            }
+          })
+        }
+      }
+
+      // Labels nos atomos nao-H do alvo (so para moleculas pequenas)
+      if (proteinPdb && !proteinPdb.includes('\nATOM  ')) {
+        const targetModel = viewer.getModel(0)
+        if (targetModel) {
+          const atoms = targetModel.selectedAtoms({})
+          atoms.forEach(atom => {
+            if (atom.elem && atom.elem !== 'H') {
+              const elemColors = { C: '#22d3ee', O: '#ef4444', N: '#3b82f6', S: '#eab308' }
+              viewer.addLabel(atom.elem, {
+                position: { x: atom.x, y: atom.y, z: atom.z },
+                backgroundColor: elemColors[atom.elem] || '#64748b',
+                backgroundOpacity: 0.6,
+                fontColor: '#ffffff',
+                fontSize: 8,
+                showBackground: true,
+                alignment: 'center',
+              })
+            }
+          })
+        }
       }
 
       // Desenhar linhas de interacao com distancias
