@@ -243,8 +243,15 @@ export default function Analysis() {
                     <div className="space-y-6">
                       {viewerData && (
                         <div>
-                          <h4 className="font-medium text-gray-300 mb-3">Visualizacao 3D - Proteina + Ligante no Sitio Ativo</h4>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-gray-300">Visualizacao 3D - Alvo + Ligante</h4>
+                            <div className="flex gap-3 text-xs">
+                              <span className="text-accent-cyan">Alvo: <span className="text-white font-medium">{proteins.find(p => String(p.id) === selectedProt)?.name || '-'}</span></span>
+                              <span className="text-accent-green">Ligante: <span className="text-white font-medium">{molecules.find(m => String(m.id) === selectedMol)?.name || '-'}</span></span>
+                            </div>
+                          </div>
                           <DockingViewer3D proteinPdb={viewerData.protein_pdb} ligandSdf={viewerData.ligand_sdf} activeSiteResidues={viewerData.active_site_residues} contacts3d={viewerData.contacts_3d || []} height={500} />
+                          <p className="text-[10px] text-gray-600 mt-1 font-mono">Ligante SMILES: {molecules.find(m => String(m.id) === selectedMol)?.smiles}</p>
                         </div>
                       )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
