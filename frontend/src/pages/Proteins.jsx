@@ -9,7 +9,7 @@ export default function Proteins() {
   const [selected, setSelected] = useState(null)
   const [pdbData, setPdbData] = useState(null)
   const [tab, setTab] = useState('list')
-  const [form, setForm] = useState({ name: '', organism: 'Leishmania', sequence: '', uniprot_id: '', pdb_code: '' })
+  const [form, setForm] = useState({ name: '', organism: 'Leishmania', sequence: '', uniprot_id: '', pdb_code: '', target_smiles: '' })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -49,6 +49,13 @@ export default function Proteins() {
     setLoading(false)
   }
 
+  async function addSmiles(e) {
+    e.preventDefault(); setLoading(true)
+    try { await proteinApi.addSmiles({ name: form.name, smiles: form.target_smiles }); setMsg('Alvo molecular adicionado'); setTab('list'); loadProteins() }
+    catch (e) { setMsg('Erro: ' + (e.response?.data?.detail || e.message)) }
+    setLoading(false)
+  }
+
   async function fetchPdbCode(e) {
     e.preventDefault(); setLoading(true)
     try { await proteinApi.fetchPdb(form.pdb_code, form.name); setMsg(`Estrutura ${form.pdb_code.toUpperCase()} obtida do RCSB PDB`); setTab('list'); loadProteins() }
@@ -61,9 +68,9 @@ export default function Proteins() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Alvo Molecular</h1>
         <div className="flex gap-2">
-          {['list', 'upload', 'pdbfetch', 'alphafold'].map(t => (
+          {['list', 'smiles', 'upload', 'pdbfetch', 'alphafold'].map(t => (
             <button key={t} onClick={() => { setTab(t); setMsg('') }} className={tabCls(tab === t)}>
-              {{ list: 'Lista', upload: 'Upload PDB', pdbfetch: 'Buscar PDB', alphafold: 'AlphaFold' }[t]}
+              {{ list: 'Lista', smiles: 'SMILES', upload: 'Upload PDB', pdbfetch: 'Buscar PDB', alphafold: 'AlphaFold' }[t]}
             </button>
           ))}
         </div>
@@ -99,6 +106,20 @@ export default function Proteins() {
             )}
           </Card>
         </div>
+      )}
+
+      {tab === 'smiles' && (
+        <Card title="Adicionar Alvo via SMILES">
+          <form onSubmit={addSmiles} className="space-y-4 max-w-lg">
+            <div><label className="block text-sm text-gray-400 mb-1">Nome</label>
+              <input className={inputCls} placeholder="Ex: Receptor SGLT2, Enzima X" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+            <div><label className="block text-sm text-gray-400 mb-1">SMILES</label>
+              <input className={inputCls} placeholder="Ex: CC(=O)Oc1ccccc1C(=O)O" value={form.target_smiles} onChange={e => setForm({ ...form, target_smiles: e.target.value })} required />
+              <p className="text-xs text-gray-600 mt-1">Estrutura molecular do alvo em formato SMILES</p>
+            </div>
+            <button type="submit" disabled={loading} className={btnCls}>{loading ? 'Adicionando...' : 'Adicionar Alvo'}</button>
+          </form>
+        </Card>
       )}
 
       {tab === 'upload' && (

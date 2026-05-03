@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.protein import Protein
-from app.schemas import ProteinSequenceInput, UniprotInput
+from app.schemas import ProteinSequenceInput, UniprotInput, SMILESInput
 from app.services.alphafold_service import (
     fetch_structure_by_uniprot,
     parse_pdb_content,
@@ -50,6 +50,42 @@ async def upload_pdb(
     db.refresh(protein)
 
     return {"protein": protein, "pdb_info": info}
+
+
+@router.post("/add-smiles")
+def add_smiles_target(data: SMILESInput, user_id: str = "default", db: Session = Depends(get_db)):
+    """Adiciona alvo molecular via SMILES. Gera estrutura 3D com RDKit."""
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
+    mol = Chem.MolFromSmiles(data.smiles)
+    if mol is None:
+        raise HTTPException(status_code=400, detail="SMILES invalido")
+
+    # Gerar 3D
+    mol = Chem.AddHs(mol)
+    params = AllChem.ETKDGv2() if hasattr(AllChem, 'ETKDGv2') else AllChem.ETKDG()
+    AllChem.EmbedMolecule(mol, params)
+    try:
+        AllChem.MMFFOptimizeMolecule(mol, maxIters=500)
+    except Exception:
+        pass
+
+    # Converter para PDB
+    pdb_data = Chem.MolToPDBBlock(mol)
+
+    protein = Protein(
+        name=data.name or f"Alvo-{Chem.MolToSmiles(Chem.RemoveHs(mol))[:30]}",
+        organism="",
+        pdb_data=pdb_data,
+        source="smiles",
+        user_id=user_id,
+    )
+    db.add(protein)
+    db.commit()
+    db.refresh(protein)
+
+    return {"protein": protein, "smiles": data.smiles}
 
 
 @router.post("/sequence")
