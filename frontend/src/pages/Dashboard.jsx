@@ -6,7 +6,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ proteins: 0, molecules: 0, analyses: 0, valid: 0, invalid: 0 })
   const [molecules, setMolecules] = useState([])
   const [loading, setLoading] = useState(true)
-  const [seeding, setSeeding] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => { loadStats() }, [])
@@ -29,21 +28,6 @@ export default function Dashboard() {
     setLoading(false)
   }
 
-  async function seedData() {
-    setSeeding(true)
-    try {
-      await proteinApi.seedLeishmania()
-      // Buscar estruturas AlphaFold automaticamente
-      try {
-        await proteinApi.fetchAlphafold({ uniprot_id: 'Q01782', name: 'PTR1 - Leishmania major (AlphaFold)' })
-      } catch (_) {}
-      try {
-        await proteinApi.fetchAlphafold({ uniprot_id: 'A4I898', name: 'TryR - Leishmania infantum (AlphaFold)' })
-      } catch (_) {}
-      await loadStats()
-    } catch (e) { console.error(e) }
-    setSeeding(false)
-  }
 
   const viabilityData = [
     { label: 'Alta', pct: stats.molecules ? Math.round(stats.valid / Math.max(stats.molecules, 1) * 100) : 0, color: '#A3E635' },
@@ -62,12 +46,6 @@ export default function Dashboard() {
           <p className="text-gray-400 text-sm mt-1">Selecione uma proteina alvo e gere novas moleculas com apoio da inteligencia artificial.</p>
         </div>
         <div className="flex gap-3">
-          {stats.proteins === 0 && (
-            <button onClick={seedData} disabled={seeding}
-              className="bg-navy-700 text-gray-300 px-4 py-2.5 rounded-lg text-sm border border-navy-600/50 hover:bg-navy-600 disabled:opacity-50 transition-colors">
-              {seeding ? 'Carregando proteinas...' : 'Inicializar Proteinas'}
-            </button>
-          )}
           <button onClick={() => navigate('/molecules?tab=generate')}
             className="bg-gradient-to-r from-accent-cyan to-accent-teal text-navy-950 px-5 py-2.5 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
